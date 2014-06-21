@@ -67,6 +67,7 @@ has scraper => qw(is lazy);
 sub _build_scraper {
   scraper {
     process 'div.wishListItem', 'books[]' => scraper {
+      process qw(//input[@name="ItemEan"] ean @value),
       process qw(//h5[1]/a[1] title  TEXT),
       process qw(//h5[1]/em[1]/a[1] author TEXT),
       process qw(div.wishListDateAdded date_added TEXT),
@@ -111,7 +112,7 @@ sub write_csv
   my $csv = Text::CSV->new( { binary => 1, eol => "\n" } )
     or die "Cannot use CSV: ".Text::CSV->error_diag;
 
-  $csv->print($out, [qw(Title Author), 'Date Added', 'Price', 'List Price', 'Discount', 'Priority']);
+  $csv->print($out, [qw(EAN Title Author), 'Date Added', 'Price', 'List Price', 'Discount', 'Priority']);
 
   for my $book (@$books) {
     $book->{priority} //= 3;
@@ -123,7 +124,7 @@ sub write_csv
       s/^You save\s*//i;
     }
 
-    $csv->print($out, [ @$book{qw(title author date_added price list_price
+    $csv->print($out, [ @$book{qw(ean title author date_added price list_price
                                   discount priority)} ]);
   }
 
