@@ -1,7 +1,7 @@
 App-BarnesNoble-WishListMinder
 ==============================
 
-App-BarnesNoble-WishListMinder is a Perl module that NEEDS A DESCRIPTION.
+App-BarnesNoble-WishListMinder is a Perl application that can fetch wishlists from Barnes & Noble, extract the books & pricing information, save it to CSV, and track pricing changes.
 
 This is a Git repository where development of App-BarnesNoble-WishListMinder takes place.  For more information, visit [App-BarnesNoble-WishListMinder on CPAN](http://search.cpan.org/dist/App-BarnesNoble-WishListMinder/).
 

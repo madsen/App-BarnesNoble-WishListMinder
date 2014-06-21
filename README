@@ -1,13 +1,14 @@
 App-BarnesNoble-WishListMinder version {{$version}}, released {{$date}}
 
 
-This module {{ die "needs a description (README.md too)" }}.
+This application can fetch wishlists from Barnes & Noble, extract the
+books & pricing information, save it to CSV, and track pricing changes.
 
 
 
 INSTALLATION
 
-To install this module, run the following commands:
+To install this application, run the following commands:
 
 {{ $t->build_instructions }}
 
