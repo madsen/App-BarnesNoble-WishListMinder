@@ -25,7 +25,6 @@ our $VERSION = '0.001';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Path::Tiny;
-use Web::Scraper;
 
 use Moo;
 use namespace::clean;
@@ -65,20 +64,9 @@ sub _build_config {
 
 has scraper => qw(is lazy);
 sub _build_scraper {
-  scraper {
-    process 'div.wishListItem', 'books[]' => scraper {
-      process qw(//input[@name="ItemEan"] ean @value),
-      process qw(//h5[1]/a[1] title  TEXT),
-      process qw(//h5[1]/em[1]/a[1] author TEXT),
-      process qw(div.wishListDateAdded date_added TEXT),
-      process qw(//span[@class=~"listPriceValue"] list_price TEXT),
-      process qw(//span[@class=~"onlinePriceValue"] price TEXT),
-      process qw(//div[@class=~"onlineDiscount"] discount TEXT),
-      process '//div[@class=~"eBooksPriority"]/select/option[@selected]',
-              qw(priority @value),
-    };
-    result 'books';
-  };
+  require Web::Scraper::BarnesNoble::WishList;
+
+  Web::Scraper::BarnesNoble::WishList::bn_scraper();
 } # end _build_scraper
 
 #---------------------------------------------------------------------
