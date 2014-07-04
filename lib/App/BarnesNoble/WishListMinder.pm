@@ -49,6 +49,12 @@ sub _eq
   $one eq $two;
 } # end _numEq
 
+sub _format_timestamp {
+  require Time::Piece;
+
+  Time::Piece->gmtime(shift)->strftime("%Y-%m-%d %H:%M:%S");
+}
+
 #=====================================================================
 
 has mech => qw(is lazy);
@@ -228,7 +234,9 @@ sub write_csv
 
 sub write_db
 {
-  my ($self, $wishlist_url, $books) = @_;
+  my ($self, $wishlist_url, $time_fetched, $books) = @_;
+
+  $time_fetched = _format_timestamp($time_fetched);
 
   my $dbh = $self->dbh;
 
@@ -296,8 +304,8 @@ sub write_db
         _numEq($current_price_row->{price}, $book->{price}) and
         _numEq($current_price_row->{list_price}, $book->{list_price}) and
         _numEq($current_price_row->{discount}, $book->{discount})) {
-      $dbh->do(<<'', undef, $ean, $current_price_row->{first_recorded});
-        UPDATE prices SET last_checked = CURRENT_TIMESTAMP
+      $dbh->do(<<'', undef, $time_fetched, $ean, $current_price_row->{first_recorded});
+        UPDATE prices SET last_checked = ?
         WHERE ean = ? AND first_recorded = ?
 
     } else {
@@ -307,9 +315,9 @@ sub write_db
 
       }
       say "Inserting $ean";
-      $dbh->do(<<'', undef, @$book{qw(ean price list_price discount)});
-        INSERT INTO prices (ean, price, list_price, discount)
-        VALUES (?,?,?,?)
+      $dbh->do(<<'', undef, @$book{qw(ean price list_price discount)}, ($time_fetched)x2);
+        INSERT INTO prices (ean, price, list_price, discount, first_recorded, last_checked)
+        VALUES (?,?,?,?,?,?)
 
     }
   } # end for each $book in @$books
@@ -375,8 +383,9 @@ sub run
 
     my $response = $m->get( $config->{$wishlist}{wishlist} );
     my $books    = $self->scrape_response($response);
+#    path("/tmp/wishlist.html")->spew_utf8($response->content);
 #    $self->write_csv($dir->child("$wishlist.csv"), $books);
-    $self->write_db($config->{$wishlist}{wishlist}, $books);
+    $self->write_db($config->{$wishlist}{wishlist}, $response->last_modified // $response->date, $books);
   }
 } # end run
 
