@@ -25,6 +25,7 @@ our $VERSION = '0.001';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Path::Tiny;
+#use Smart::Comments;
 
 use Moo;
 use namespace::clean;
@@ -285,6 +286,7 @@ sub write_db
       }
     } else {
       # Add book to this wishlist
+###   Inserting: @$book{qw(ean priority date_added)}
       $dbh->do(<<'', undef, $wishlist_id, @$book{qw(ean priority date_added)});
         INSERT INTO wishlist_books (wishlist_id, ean, priority, date_added)
         VALUES (?,?,?,?)
@@ -314,7 +316,7 @@ sub write_db
         UPDATE prices SET current = 0 WHERE ean = ? AND first_recorded = ?
 
       }
-      say "Inserting $ean";
+###   Inserting: $ean
       $dbh->do(<<'', undef, @$book{qw(ean price list_price discount)}, ($time_fetched)x2);
         INSERT INTO prices (ean, price, list_price, discount, first_recorded, last_checked)
         VALUES (?,?,?,?,?,?)
