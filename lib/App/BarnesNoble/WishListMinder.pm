@@ -51,9 +51,14 @@ sub _eq
 } # end _numEq
 
 sub _format_price {
-  my $text = sprintf '$%03d', shift;
-  substr($text, -2, 0, '.');
-  $text;
+  my $price = shift;
+  if (defined $price) {
+    $price = sprintf '$%03d', $price;
+    substr($price, -2, 0, '.');
+    $price;
+  } else {
+    'unavailable';
+  }
 } # end _format_price
 
 sub _format_timestamp {
@@ -413,8 +418,8 @@ sub email_price_drop_alert
   for my $ean (@eans) {
     my $book = $updates->{$ean}{new};
     my $price = _format_price($book->{price});
-    if (my $old_price = $updates->{$ean}{old}{price}) {
-      $price .= sprintf ' (was %s)', _format_price($old_price);
+    if (my $old = $updates->{$ean}{old}) {
+      $price .= sprintf ' (was %s)', _format_price($old->{price});
     }
     push @body, <<"END UPDATE";
 Title:  $book->{title}  ($ean)
