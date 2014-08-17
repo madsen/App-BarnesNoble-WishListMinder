@@ -354,7 +354,8 @@ sub reduced_price_eans
     $updates->{$a}{new}{title} cmp $updates->{$b}{new}{title}
   } grep {
     my ($old, $new) = @{$updates->{$_}}{qw(old new)};
-    $old and (!$old->{price} or $new->{price} < $old->{price});
+    $old and defined($new->{price})
+        and (!defined($old->{price}) or $new->{price} < $old->{price});
   } keys %$updates;
 } # end reduced_price_eans
 
@@ -398,6 +399,28 @@ sub get_wishlist_id
 } # end get_wishlist_id
 #---------------------------------------------------------------------
 
+sub describe_selected_updates
+{
+  my $self = shift;
+
+  my $updates = $self->updates;
+
+  map {
+    my $book = $updates->{$_}{new};
+    my $price = _format_price($book->{price});
+    if (my $old = $updates->{$_}{old}) {
+      $price .= sprintf ' (was %s)', _format_price($old->{price});
+    }
+    <<"END UPDATE";
+Title:  $book->{title}  ($_)
+Author: $book->{author}
+Price:  $price
+END UPDATE
+  } @_;
+} # end describe_selected_updates
+
+#---------------------------------------------------------------------
+
 sub email_price_drop_alert
 {
   my ($self) = @_;
@@ -413,20 +436,7 @@ sub email_price_drop_alert
   my $config  = $self->config->{_};
 
   my $address = $config->{report} || $config->{email};
-  my @body;
-
-  for my $ean (@eans) {
-    my $book = $updates->{$ean}{new};
-    my $price = _format_price($book->{price});
-    if (my $old = $updates->{$ean}{old}) {
-      $price .= sprintf ' (was %s)', _format_price($old->{price});
-    }
-    push @body, <<"END UPDATE";
-Title:  $book->{title}  ($ean)
-Author: $book->{author}
-Price:  $price
-END UPDATE
-  }
+  my @body = $self->describe_selected_updates(@eans);
 
   my $subject = (@eans > 2)
     ? sprintf('%d books', scalar @eans)
@@ -448,6 +458,22 @@ END UPDATE
 
   Email::Sender::Simple->send($email);
 } # end email_price_drop_alert
+#---------------------------------------------------------------------
+
+sub print_updates
+{
+  my $self = shift;
+
+  my $updates = $self->updates;
+
+  my @eans = sort {
+    $updates->{$a}{new}{title}  cmp $updates->{$b}{new}{title} or
+    $updates->{$a}{new}{author} cmp $updates->{$b}{new}{author}
+  } keys %$updates;
+
+  print join("\n", $self->describe_selected_updates(@eans));
+} # end print_updates
+
 #---------------------------------------------------------------------
 
 sub run
