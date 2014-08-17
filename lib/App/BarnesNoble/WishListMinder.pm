@@ -105,7 +105,7 @@ sub _build_db_file {
   shift->dir->child('wishlist.sqlite');
 } # end _build_db_file
 
-has dbh => qw(is lazy);
+has dbh => qw(is lazy  predicate 1  clearer _clear_dbh);
 sub _build_dbh {
   my $self = shift;
 
@@ -123,6 +123,18 @@ sub _build_dbh {
 
   $dbh;
 } # end _build_dbh
+
+sub close_dbh
+{
+  my $self = shift;
+
+  if ($self->has_dbh) {
+    my $dbh = $self->dbh;
+    $dbh->rollback;
+    $dbh->disconnect;
+    $self->_clear_dbh;
+  }
+} # end close_dbh
 
 has scraper => qw(is lazy);
 sub _build_scraper {
@@ -460,6 +472,64 @@ sub email_price_drop_alert
 } # end email_price_drop_alert
 #---------------------------------------------------------------------
 
+sub print_matching_books
+{
+  my ($self, $search) = @_;
+
+  my $books = $self->dbh->selectall_arrayref(<<'END SEARCH', undef, ("%$search%")x2);
+SELECT ean, price, title, author FROM books NATURAL JOIN prices
+WHERE prices.current AND (title LIKE ? OR author LIKE ?)
+ORDER by title, author
+END SEARCH
+
+  if (@$books == 1) {
+    print "$books->[0][0] ";
+    $self->print_price_history($books->[0][0]);
+  } else {
+    foreach my $row (@$books) {
+      $row->[1] = _format_price($row->[1]);
+      printf "%s %6s %s by %s\n", @$row;
+    }
+    print "\n";
+  }
+} # end print_matching_books
+
+#---------------------------------------------------------------------
+
+sub print_price_history
+{
+  my ($self, $ean) = @_;
+
+  my $dbh = $self->dbh;
+
+  my $book = $dbh->selectrow_hashref(
+    'SELECT title, author FROM books WHERE ean = ?', undef, $ean
+  );
+
+  print "$book->{title} by $book->{author}\n";
+
+  my $history = $dbh->prepare(<<'END HISTORY');
+SELECT first_recorded, last_checked, price, list_price, discount
+FROM prices WHERE ean = ? ORDER BY first_recorded
+END HISTORY
+
+  $history->execute($ean);
+
+  while (my $row = $history->fetchrow_hashref) {
+    $_ =~ s/ .+// for @$row{qw(first_recorded last_checked)};
+    printf("%s - %s %6s%s%s\n", @$row{qw(first_recorded last_checked)},
+           _format_price($row->{price}),
+           $row->{list_price}
+           ? " (list " . _format_price($row->{list_price}) . ")"
+           : '',
+           $row->{discount} ? " ($row->{discount}% off)" : '');
+  }
+
+  print "\n";
+} # end print_price_history
+
+#---------------------------------------------------------------------
+
 sub print_updates
 {
   my $self = shift;
@@ -473,16 +543,14 @@ sub print_updates
 
   print join("\n", $self->describe_selected_updates(@eans));
 } # end print_updates
-
 #---------------------------------------------------------------------
 
-sub run
+sub update_wishlists
 {
-  my ($self, @args) = @_;
+  my $self = shift;
 
   my $config  = $self->config;
   my $m       = $self->mech;
-  my $dir     = $self->dir;
 
   # Ensure we can open the database before we start making web requests
   $self->dbh;
@@ -495,11 +563,78 @@ sub run
     my $response = $m->get( $config->{$wishlist}{wishlist} );
     my $books    = $self->scrape_response($response);
 #    path("/tmp/wishlist.html")->spew_utf8($response->content);
-#    $self->write_csv($dir->child("$wishlist.csv"), $books);
+#    $self->write_csv($self->dir->child("$wishlist.csv"), $books);
     $self->write_db($config->{$wishlist}{wishlist}, $response->last_modified // $response->date, $books);
   }
+} # end update_wishlists
 
-  $self->email_price_drop_alert;
+#---------------------------------------------------------------------
+
+sub usage {
+  my $name = $0;
+  $name =~ s!^.*[/\\]!!;
+
+  shift->close_dbh;
+
+  print "$name $VERSION\n";
+  exit if $_[0] and $_[0] eq 'version';
+  print <<"END USAGE";
+\nUsage:  $name [options] [EAN_or_TITLE_or_AUTHOR] ...
+  -e, --email              Send Price Drop Alert email (implies --update)
+  -q, --quiet              Don't print list of updates
+  -u, --update             Download current prices from wishlist
+      --help               Display this help message
+      --version            Display version information
+END USAGE
+
+    exit;
+} # end usage
+#---------------------------------------------------------------------
+
+sub run
+{
+  my ($self, @args) = @_;
+
+  # Process command line options
+  my ($fetch_wishlist, $quiet, $send_email);
+  {
+    require Getopt::Long; Getopt::Long->VERSION(2.24); # object-oriented
+    my $getopt = Getopt::Long::Parser->new(
+      config => [qw(bundling no_getopt_compat)]
+    );
+    my $usage = sub { $self->usage(@_) };
+
+    $getopt->getoptionsfromarray(\@args,
+      'email|e'   => \$send_email,
+      'quiet|q'   => \$quiet,
+      'update|u'  => \$fetch_wishlist,
+      'help'      => $usage,
+      'version'   => $usage
+    ) or $self->usage;
+  }
+
+  # Update database & send email if requested
+  if ($fetch_wishlist or $send_email) {
+    $self->update_wishlists;
+
+    $self->email_price_drop_alert if $send_email;
+    $self->print_updates unless $quiet;
+  } elsif (not @args) {
+    # Didn't fetch updates and no request to display book data
+    $self->usage;
+  }
+
+  # Display data from the database about requested books
+  foreach my $arg (@args) {
+    if ($arg =~ /^[0-9]{13}\z/) {
+      $self->print_price_history($arg);
+    } else {
+      $self->print_matching_books($arg);
+    }
+  }
+
+  # Disconnect from the database
+  $self->close_dbh;
 } # end run
 
 #=====================================================================
