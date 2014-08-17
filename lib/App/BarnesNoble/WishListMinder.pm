@@ -50,6 +50,12 @@ sub _eq
   $one eq $two;
 } # end _numEq
 
+sub _format_price {
+  my $text = sprintf '$%03d', shift;
+  substr($text, -2, 0, '.');
+  $text;
+} # end _format_price
+
 sub _format_timestamp {
   require Time::Piece;
 
@@ -119,6 +125,8 @@ sub _build_scraper {
 
   Web::Scraper::BarnesNoble::WishList::bn_scraper();
 } # end _build_scraper
+
+has updates => qw(is ro  default) => sub { {} };
 
 #---------------------------------------------------------------------
 sub create_database_schema
@@ -312,10 +320,11 @@ sub write_db
 
     } else {
       if ($current_price_row) {
-      $dbh->do(<<'', undef, $ean, $current_price_row->{first_recorded});
-        UPDATE prices SET current = 0 WHERE ean = ? AND first_recorded = ?
+        $dbh->do(<<'', undef, $ean, $current_price_row->{first_recorded});
+          UPDATE prices SET current = 0 WHERE ean = ? AND first_recorded = ?
 
       }
+      $self->record_update($ean, $current_price_row, $book);
 ###   Inserting: $ean
       $dbh->do(<<'', undef, @$book{qw(ean price list_price discount)}, ($time_fetched)x2);
         INSERT INTO prices (ean, price, list_price, discount, first_recorded, last_checked)
@@ -326,6 +335,19 @@ sub write_db
 
   $dbh->commit;
 } # end write_db
+
+sub record_update
+{
+  my ($self, $ean, $old, $new) = @_;
+
+  # Only record the update if the price has dropped
+  if ($old and (!$old->{price} or $new->{price} < $old->{price})) {
+    $self->updates->{$ean} = {
+      old => $old,
+      new => $new,
+    };
+  }
+} # end record_update
 
 sub get_existing_books
 {
@@ -365,8 +387,58 @@ sub get_wishlist_id
 
   $wishlist_id;
 } # end get_wishlist_id
-
 #---------------------------------------------------------------------
+
+sub email_report
+{
+  my ($self) = @_;
+
+  require Email::Sender::Simple;
+  require Email::Simple;
+  require Email::Simple::Creator;
+  require Encode;
+
+  my $updates = $self->updates;
+  my $config  = $self->config->{_};
+
+  my @eans = sort {
+    $updates->{$a}{new}{price} <=> $updates->{$b}{new}{price} or
+    $updates->{$a}{new}{title} cmp $updates->{$b}{new}{title}
+  } keys %$updates;
+
+  my $address = $config->{report} || $config->{email};
+  my @body;
+
+  for my $ean (@eans) {
+    my $book = $updates->{$ean}{new};
+    my $price = _format_price($book->{price});
+    if (my $old_price = $updates->{$ean}{old}{price}) {
+      $price .= sprintf ' (was %s)', _format_price($old_price);
+    }
+    push @body, <<"END UPDATE";
+Title:  $book->{title}  ($ean)
+Author: $book->{author}
+Price:  $price
+END UPDATE
+  }
+
+  my $email = Email::Simple->create(
+    header => [
+      To      => $address,
+      From    => qq'"Barnes & Noble Wishlist Minder" <$address>',
+      Subject => sprintf('%d book%s been reduced in price',
+                         scalar @eans, (@eans == 1 ? ' has' : 's have')),
+      'MIME-Version' => '1.0',
+      'Content-Type' => 'text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding' => '8bit',
+    ],
+    body => Encode::encode('utf8', join("\n\n", @body)),
+  );
+
+  Email::Sender::Simple->send($email);
+} # end email_report
+#---------------------------------------------------------------------
+
 sub run
 {
   my ($self, @args) = @_;
@@ -389,6 +461,8 @@ sub run
 #    $self->write_csv($dir->child("$wishlist.csv"), $books);
     $self->write_db($config->{$wishlist}{wishlist}, $response->last_modified // $response->date, $books);
   }
+
+  $self->email_report if %{ $self->updates };
 } # end run
 
 #=====================================================================
