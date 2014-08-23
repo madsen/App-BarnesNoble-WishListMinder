@@ -493,7 +493,27 @@ END SEARCH
     print "\n";
   }
 } # end print_matching_books
+#---------------------------------------------------------------------
 
+sub print_updates_since
+{
+  my ($self, $since_date) = @_;
+
+  my $s = $self->dbh->prepare(<<'END SEARCH');
+SELECT ean, price, title, author FROM books NATURAL JOIN prices
+WHERE prices.current AND first_recorded >= ?
+ORDER by first_recorded, price, title, author
+END SEARCH
+
+  $s->execute($since_date);
+
+  while (my $row = $s->fetch) {
+    $row->[1] = _format_price($row->[1]);
+    printf "%s %6s %s by %s\n", @$row;
+  }
+
+  print "\n";
+} # end print_updates_since
 #---------------------------------------------------------------------
 
 sub print_price_history
@@ -582,6 +602,7 @@ sub usage {
 \nUsage:  $name [options] [EAN_or_TITLE_or_AUTHOR] ...
   -e, --email              Send Price Drop Alert email (implies --update)
   -q, --quiet              Don't print list of updates
+  -s, --since=DATE         Print books whose price changed on or after DATE
   -u, --update             Download current prices from wishlist
       --help               Display this help message
       --version            Display version information
@@ -596,7 +617,7 @@ sub run
   my ($self, @args) = @_;
 
   # Process command line options
-  my ($fetch_wishlist, $quiet, $send_email);
+  my ($fetch_wishlist, $quiet, $send_email, $since_date);
   {
     require Getopt::Long; Getopt::Long->VERSION(2.24); # object-oriented
     my $getopt = Getopt::Long::Parser->new(
@@ -607,6 +628,7 @@ sub run
     $getopt->getoptionsfromarray(\@args,
       'email|e'   => \$send_email,
       'quiet|q'   => \$quiet,
+      'since|s=s' => \$since_date,
       'update|u'  => \$fetch_wishlist,
       'help'      => $usage,
       'version'   => $usage
@@ -619,9 +641,13 @@ sub run
 
     $self->email_price_drop_alert if $send_email;
     $self->print_updates unless $quiet;
-  } elsif (not @args) {
+  } elsif (not @args and not $since_date) {
     # Didn't fetch updates and no request to display book data
     $self->usage;
+  }
+
+  if ($since_date) {
+    $self->print_updates_since($since_date);
   }
 
   # Display data from the database about requested books
