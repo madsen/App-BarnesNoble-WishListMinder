@@ -270,30 +270,6 @@ sub scrape_response
 } # end scrape_response
 #---------------------------------------------------------------------
 
-sub write_csv
-{
-  my ($self, $outPath, $books) = @_;
-
-  require Text::CSV;
-
-  my $out = $outPath->openw_utf8;
-
-  my $csv = Text::CSV->new( { binary => 1, eol => "\n" } )
-    or die "Cannot use CSV: ".Text::CSV->error_diag;
-
-  $csv->print($out, [qw(EAN Title Author), 'Date Added', 'Price', 'List Price', 'Discount', 'Priority']);
-
-  for my $book (@$books) {
-    $book->{discount} //= '';
-
-    $csv->print($out, [ @$book{qw(ean title author date_added price list_price
-                                  discount priority)} ]);
-  }
-
-  close $out;
-} # end write_csv
-#---------------------------------------------------------------------
-
 sub write_db
 {
   my ($self, $wishlist_url, $time_fetched, $books) = @_;
@@ -619,7 +595,6 @@ sub update_wishlists
     my $response = $m->get( $config->{$wishlist}{wishlist} );
     my $books    = $self->scrape_response($response);
 #    path("/tmp/wishlist.html")->spew_utf8($response->content);
-#    $self->write_csv($self->dir->child("$wishlist.csv"), $books);
     $self->write_db($config->{$wishlist}{wishlist}, $response->last_modified // $response->date, $books);
   }
 } # end update_wishlists
