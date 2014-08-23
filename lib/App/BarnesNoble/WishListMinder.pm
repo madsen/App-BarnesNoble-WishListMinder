@@ -459,7 +459,7 @@ sub email_price_drop_alert
   my $email = Email::Simple->create(
     header => [
       To      => $address,
-      From    => qq'"Barnes & Noble Wishlist Minder" <$address>',
+      From    => qq'"Barnes & Noble Wishlist" <$address>',
       Subject => "Price Drop Alert: $subject",
       'MIME-Version' => '1.0',
       'Content-Type' => 'text/plain; charset=UTF-8',
