@@ -4,6 +4,89 @@ use 5.010;
 use strict;
 use warnings;
 
+# VERSION
+# This file is part of {{$dist}} {{$dist_version}} ({{$date}})
+
 use App::BarnesNoble::WishListMinder;
 
 App::BarnesNoble::WishListMinder->new->run(@ARGV);
+
+__END__
+
+=head1 NAME
+
+bn-wishlist - Monitor a Barnes & Noble wishlist for price changes
+
+=head1 VERSION
+
+This document describes C<bn-wishlist>, released {{$date}}
+as part of {{$dist}} version {{$dist_version}}.
+
+=head1 SYNOPSIS
+
+Configure your wishlist URL: S<C<bn-wishlist --configure>>
+
+Add this as a cron job: S<C<bn-wishlist --email --quiet>>
+
+To display the price history of a book: S<C<bn-wishlist EAN>>
+
+To list books by title or author: S<C<bn-wishlist SEARCH>>
+
+=head1 OPTIONS
+
+=over
+
+=item C<--configure>
+
+Display the location of the F<config.ini> file, and open it in a text
+editor if possible.  If the config file does not exist, a skeleton one
+will be created.
+
+=item C<--email> (abbreviated C<-e>)
+
+Send a Price Drop Alert email if any books have been reduced in price
+since the last update.  Implies C<--update>.
+
+=item C<--help>
+
+Display the usage message.
+
+=item C<--quiet> (abbreviated C<-q>)
+
+Normally, when current prices are downloaded from Barnes & Noble,
+C<bn-wishlist> prints a list of all changes since the last update.
+This option suppresses that output (useful for cron jobs).
+
+=item C<--since=DATE> (abbreviated C<-sDATE>)
+
+This prints a list of all books whose price changed on or after
+C<DATE> (in C<YYYY-MM-DD> format).
+
+=item C<--update> (abbreviated C<-u>)
+
+Connect to the Barnes & Noble website, download all configured
+wishlists, and record current prices.  Unless this option (or an
+option that implies it) is used, C<bn-wishlist> will not make any web
+requests.
+
+=item C<--version>
+
+Display the version of L<App::BarnesNoble::WishListMinder>.
+
+=back
+
+=head1 DESCRIPTION
+
+Barnes & Noble allows you to create wishlists on their website, but
+they don't notify you when an item on your wishlist is on sale or
+otherwise reduced in price.  C<bn-wishlist> can be added to your F<crontab>
+to monitor your wishlists and email you Price Drop Alerts.
+
+You can also list books by title or author, and display the price
+history of any book on your wishlist.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+The F<config.ini> file is stored in {{$dist}}'s data
+directory as defined by L<File::HomeDir>.  Run S<C<bn-wishlist --configure>>
+to see the actual location on your system.
