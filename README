@@ -2,7 +2,8 @@ App-BarnesNoble-WishListMinder version {{$version}}, released {{$date}}
 
 
 This application can fetch wishlists from Barnes & Noble, extract the
-books & pricing information, save it to CSV, and track pricing changes.
+books & pricing information, save it to a SQLite database, track
+pricing changes, and email alerts when the price drops.
 
 
 
@@ -11,6 +12,13 @@ INSTALLATION
 To install this application, run the following commands:
 
 {{ $t->build_instructions }}
+	bn-wishlist --configure
+
+You will probably also want to add this command to your crontab:
+
+	bn-wishlist --email --quiet
+
+I suggest running it once a day at a time of your choice.
 
 
 

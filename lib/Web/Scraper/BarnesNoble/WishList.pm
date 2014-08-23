@@ -27,6 +27,15 @@ use warnings;
 use Web::Scraper;
 
 #=====================================================================
+
+=sub bn_scraper
+
+  $scraper = Web::Scraper::BarnesNoble::WishList::bn_scraper();
+
+Construct a L<Web::Scraper> for a wishlist.
+
+=cut
+
 sub bn_scraper
 {
   scraper {
@@ -51,3 +60,15 @@ sub bn_scraper
 1;
 
 __END__
+
+=head1 SYNOPSIS
+
+  use Web::Scraper::BarnesNoble::WishList;
+  my $scraper = Web::Scraper::BarnesNoble::WishList::bn_scraper();
+
+=head1 DESCRIPTION
+
+This module creates a L<Web::Scraper> object for scraping a Barnes &
+Noble wishlist.  Currently, it's part of L<App::BarnesNoble::WishListMinder>.
+If there's interest, I'll split it out into its own distribution and
+add documentation.

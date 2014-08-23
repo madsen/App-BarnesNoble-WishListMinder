@@ -690,3 +690,26 @@ __END__
 =head1 SYNOPSIS
 
   use App::BarnesNoble::WishListMinder;
+  App::BarnesNoble::WishListMinder->new->run(@ARGV);
+
+=head1 DESCRIPTION
+
+App::BarnesNoble::WishListMinder is an application for monitoring a
+Barnes & Noble wishlist for price changes.  For user documentation,
+see L<bn-wishlist>.
+
+The internals are not currently documented and subject to change.
+If you're interested in using this module directly, let me know and
+we can discuss the API.
+
+=head1 SEE ALSO
+
+L<bn-wishlist>
+
+L<http://www.barnesandnoble.com/>
+
+=for Pod::Loom-omit
+CONFIGURATION AND ENVIRONMENT
+
+=for Pod::Coverage
+.*

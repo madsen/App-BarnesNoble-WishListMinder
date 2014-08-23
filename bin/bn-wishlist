@@ -26,11 +26,11 @@ as part of {{$dist}} version {{$dist_version}}.
 
 Configure your wishlist URL: S<C<bn-wishlist --configure>>
 
-Add this as a cron job: S<C<bn-wishlist --email --quiet>>
+In your crontab: S<C<bn-wishlist --email --quiet>>
 
 To display the price history of a book: S<C<bn-wishlist EAN>>
 
-To list books by title or author: S<C<bn-wishlist SEARCH>>
+To list books by title or author: S<C<bn-wishlist SEARCH_TERM>>
 
 =head1 OPTIONS
 
@@ -80,10 +80,33 @@ Display the version of L<App::BarnesNoble::WishListMinder>.
 Barnes & Noble allows you to create wishlists on their website, but
 they don't notify you when an item on your wishlist is on sale or
 otherwise reduced in price.  C<bn-wishlist> can be added to your F<crontab>
-to monitor your wishlists and email you Price Drop Alerts.
+to monitor your wishlists and email you Price Drop Alerts.  I suggest
+running it once a day at a time of your choice.  I've seen sales that
+lasted only 1 day, so I don't recommend running it less often.
 
 You can also list books by title or author, and display the price
 history of any book on your wishlist.
+
+To list books by title or author, just specify any part of the title
+or author name on the command line.  Spaces must be quoted; each
+argument is treated as a separate search.  The output of a search is the
+International Article Number (EAN), current price, title, and author.
+(For books, the EAN is also called the ISBN-13.)
+
+If only one book is matched by a search, then the full price history
+for that book is displayed.  This shows the EAN, title, and author,
+followed by one line for each price change.  For each price it shows,
+the first date that price was seen, the last date it was seen, the
+price, and (if applicable) the list price and percentage discount as
+shown on the wishlist.
+
+You can also see the price history by specifying the EAN.
+
+=head1 SEE ALSO
+
+L<http://en.wikipedia.org/wiki/International_Article_Number_%28EAN%29>
+
+L<http://www.barnesandnoble.com/>
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
