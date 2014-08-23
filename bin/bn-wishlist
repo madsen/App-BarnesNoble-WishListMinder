@@ -84,8 +84,9 @@ to monitor your wishlists and email you Price Drop Alerts.  I suggest
 running it once a day at a time of your choice.  I've seen sales that
 lasted only 1 day, so I don't recommend running it less often.
 
-You can also list books by title or author, and display the price
-history of any book on your wishlist.
+The history of price changes is stored in a SQLite database.  You can
+use C<bn-wishlist> to list books by title or author, and display the
+price history of any book on your wishlist.
 
 To list books by title or author, just specify any part of the title
 or author name on the command line.  Spaces must be quoted; each
@@ -113,3 +114,6 @@ L<http://www.barnesandnoble.com/>
 The F<config.ini> file is stored in {{$dist}}'s data
 directory as defined by L<File::HomeDir>.  Run S<C<bn-wishlist --configure>>
 to see the actual location on your system.
+
+The SQLite database (F<wishlist.sqlite>) tracking price changes is
+stored in the same directory as F<config.ini>.
