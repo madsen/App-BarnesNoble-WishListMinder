@@ -146,6 +146,42 @@ sub _build_scraper {
 has updates => qw(is ro  default) => sub { {} };
 
 #---------------------------------------------------------------------
+sub configure
+{
+  my ($self) = @_;
+
+  my $config_file = $self->config_file;
+
+  say "Your config file is:\n $config_file";
+
+  unless ($config_file->is_file) {
+    die "$config_file is a directory!\n" if $config_file->is_dir;
+    $config_file->spew_utf8(<<'END CONFIG');
+;						-*-conf-windows-*-
+; Your credentials for logging in to the Barnes & Noble website go here:
+email    = YOUR EMAIL HERE
+password = YOUR PASSWORD HERE
+
+; If you want the Price Drop Alert emails to go to a different address,
+; uncomment the next line and set the email address.
+;report   = EMAIL ADDRESS FOR ALERTS
+
+; Next, you need one or more wishlists to monitor.
+; Each wishlist must have a unique name in [brackets].
+
+[My Wishlist]
+wishlist = WISHLIST URL HERE
+END CONFIG
+    say "\nYou need to replace the ALL CAPS placeholders with the correct values.";
+  }
+
+  if (my $editor = $ENV{VISUAL} || $ENV{EDITOR}) {
+    require Text::ParseWords;
+    system(Text::ParseWords::shellwords($editor), "$config_file");
+  }
+} # end configure
+
+#---------------------------------------------------------------------
 sub create_database_schema
 {
   my ($self, $dbh) = @_;
@@ -604,6 +640,7 @@ sub usage {
   -q, --quiet              Don't print list of updates
   -s, --since=DATE         Print books whose price changed on or after DATE
   -u, --update             Download current prices from wishlist
+      --configure          Create and/or edit the config file
       --help               Display this help message
       --version            Display version information
 END USAGE
@@ -630,6 +667,7 @@ sub run
       'quiet|q'   => \$quiet,
       'since|s=s' => \$since_date,
       'update|u'  => \$fetch_wishlist,
+      'configure' => sub { $self->configure; exit },
       'help'      => $usage,
       'version'   => $usage
     ) or $self->usage;
@@ -643,7 +681,11 @@ sub run
     $self->print_updates unless $quiet;
   } elsif (not @args and not $since_date) {
     # Didn't fetch updates and no request to display book data
-    $self->usage;
+    if ($self->config_file->is_file) {
+      $self->usage;
+    } else {
+      $self->configure;
+    }
   }
 
   if ($since_date) {
