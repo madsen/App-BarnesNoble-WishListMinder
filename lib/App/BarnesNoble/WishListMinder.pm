@@ -21,7 +21,7 @@ use 5.010;
 use strict;
 use warnings;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Path::Tiny;
@@ -585,6 +585,22 @@ sub print_updates
 } # end print_updates
 #---------------------------------------------------------------------
 
+sub have_user_cookie
+{
+  my $have_cookie;
+  my $min_expires = time() + 30;
+
+  shift->mech->cookie_jar->scan(sub {
+    $have_cookie = 1 if $_[1] eq 'userid'
+                    and $_[4] eq '.barnesandnoble.com'
+                    and $_[8] > $min_expires
+  });
+
+  $have_cookie;
+} # end have_user_cookie
+
+#---------------------------------------------------------------------
+
 sub update_wishlists
 {
   my $self = shift;
@@ -595,13 +611,18 @@ sub update_wishlists
   # Ensure we can open the database before we start making web requests
   $self->dbh;
 
-  $self->login;
+  $self->login unless $self->have_user_cookie;
 
   for my $wishlist (sort keys %$config) {
     next if $wishlist eq '_';   # the root INI section
 
     my $response = $m->get( $config->{$wishlist}{wishlist} );
     my $books    = $self->scrape_response($response);
+    unless (@$books) {
+      warn "$config->{$wishlist}{wishlist} has no entries\n";
+      # Save the response for debugging:
+      $self->dir->child("empty-$wishlist.html")->spew_utf8($response->content);
+    }
 #    path("/tmp/wishlist.html")->spew_utf8($response->content);
     $self->write_db($config->{$wishlist}{wishlist}, $response->last_modified // $response->date, $books);
   }

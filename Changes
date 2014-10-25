@@ -1,5 +1,10 @@
 Revision history for App-BarnesNoble-WishListMinder
 
+0.003  NOT
+	- Don't login if we have a valid userid cookie stored
+	- Warn if a configured wishlist has no books in it
+	  (This could indicate a problem fetching it.)
+
 0.002  2014-10-18
 	- Store cookies between runs
 
