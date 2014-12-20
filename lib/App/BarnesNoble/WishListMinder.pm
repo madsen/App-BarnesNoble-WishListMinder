@@ -21,7 +21,7 @@ use 5.010;
 use strict;
 use warnings;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Path::Tiny;
@@ -494,7 +494,7 @@ sub email_price_drop_alert
 
 sub print_matching_books
 {
-  my ($self, $search) = @_;
+  my ($self, $search, $all_history) = @_;
 
   my $books = $self->dbh->selectall_arrayref(<<'END SEARCH', undef, ("%$search%")x2);
 SELECT ean, price, title, author FROM books NATURAL JOIN prices
@@ -502,9 +502,11 @@ WHERE prices.current AND (title LIKE ? OR author LIKE ?)
 ORDER by title, author
 END SEARCH
 
-  if (@$books == 1) {
-    print "$books->[0][0] ";
-    $self->print_price_history($books->[0][0]);
+  if ($all_history or @$books == 1) {
+    foreach my $row (@$books) {
+      print "$row->[0] ";
+      $self->print_price_history($row->[0]);
+    }
   } else {
     foreach my $row (@$books) {
       $row->[1] = _format_price($row->[1]);
@@ -640,6 +642,7 @@ sub usage {
   exit if $_[0] and $_[0] eq 'version';
   print <<"END USAGE";
 \nUsage:  $name [options] [EAN_or_TITLE_or_AUTHOR] ...
+  -a, --all-history        Show price history even when multiple items match
   -e, --email              Send Price Drop Alert email (implies --update)
   -q, --quiet              Don't print list of updates
   -s, --since=DATE         Print books whose price changed on or after DATE
@@ -658,7 +661,7 @@ sub run
   my ($self, @args) = @_;
 
   # Process command line options
-  my ($fetch_wishlist, $quiet, $send_email, $since_date);
+  my ($all_history, $fetch_wishlist, $quiet, $send_email, $since_date);
   {
     require Getopt::Long; Getopt::Long->VERSION(2.24); # object-oriented
     my $getopt = Getopt::Long::Parser->new(
@@ -667,6 +670,7 @@ sub run
     my $usage = sub { $self->usage(@_) };
 
     $getopt->getoptionsfromarray(\@args,
+      'all-history|a' => \$all_history,
       'email|e'   => \$send_email,
       'quiet|q'   => \$quiet,
       'since|s=s' => \$since_date,
@@ -701,7 +705,7 @@ sub run
     if ($arg =~ /^[0-9]{13}\z/) {
       $self->print_price_history($arg);
     } else {
-      $self->print_matching_books($arg);
+      $self->print_matching_books($arg, $all_history);
     }
   }
 

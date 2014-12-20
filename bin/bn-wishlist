@@ -36,6 +36,14 @@ To list books by title or author: S<C<bn-wishlist SEARCH_TERM>>
 
 =over
 
+=item C<--all-history> (abbreviated C<-a>)
+
+By default, when listing books by title or author, if multiple books
+match the search term, bn-wishlist displays only the EAN, current
+price, title, and author of each matching book.  If only one book
+matches, it displays the full price history of that book.  This option
+causes it to display the full price history for each match.
+
 =item C<--configure>
 
 Display the location of the F<config.ini> file, and open it in a text
